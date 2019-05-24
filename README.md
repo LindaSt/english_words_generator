@@ -1,0 +1,1 @@
+# chinese_mnis_generator

@@ -33,7 +33,7 @@ def create_test_image(output_path, char, i, font):
     # bottom middle
     text_x = int((bg_width - word_width) / 2)
     text_y = bg_width - word_height
-    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y)
+    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y, "test")
 
 
 def create_val_image(output_path, char, i, font):
@@ -49,7 +49,7 @@ def create_val_image(output_path, char, i, font):
 
     text_x = bg_width - word_width
     text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y)
+    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y, "val")
 
 
 def create_train_image(output_path, char, i, font):
@@ -66,29 +66,29 @@ def create_train_image(output_path, char, i, font):
     # middle offset
     text_x = int((bg_width - word_width) / 2)
     text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg1, char, font, i, output_path, text_x, text_y)
+    draw_word_and_save_file(bg1, char, font, i, output_path, text_x, text_y, "train")
 
     # left offset
     bg2 = np.full((224, 244), 255)
 
     text_x = 10
     text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg2, char, font, i, output_path, text_x, text_y)
+    draw_word_and_save_file(bg2, char, font, i, output_path, text_x, text_y, "train")
 
     # top offset
     bg3 = np.full((224, 244), 255)
 
     text_x = int((bg_width - word_width) / 2)
     text_y = 10
-    draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y)
+    draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y, "train")
 
 
-def draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y):
+def draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y, cat):
     word_img, _, _ = draw_text_on_bg(char, font, bg3, text_x, text_y)
-    folder_name = os.path.join(output_path, 'train', str(i))
+    folder_name = os.path.join(output_path, cat, str(i))
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
-    fname = os.path.join(folder_name, 'train_2.jpg')
+    fname = os.path.join(folder_name, cat + '_' + str(i) + '.jpg')
     cv2.imwrite(fname, word_img)
 
 

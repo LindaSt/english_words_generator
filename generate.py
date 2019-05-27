@@ -21,8 +21,8 @@ def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
 
     pool = Pool(processes=cpu_count())
 
-    pool.starmap(generate_files, zip(alphabet,
-                                     range(len(alphabet)),
+    pool.starmap(generate_files, zip(alphabet[1],
+                                     range(len(alphabet[1])),
                                      itertools.repeat(output_path),
                                      itertools.repeat(test_amount),
                                      itertools.repeat(train_amount),
@@ -33,31 +33,33 @@ def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
 
 
 def generate_files(char, i, output_path, test_amount, train_amount, val_amount, noiser):
-    font = ImageFont.truetype('./data/font/msyh.ttc', 152)
     print('create files for char {}'.format(i))
 
-    create_train_image(output_path, char, i, font, train_amount, noiser)
-    create_val_image(output_path, char, i, font, val_amount, noiser)
-    create_test_image(output_path, char, i, font, test_amount, noiser)
+    create_train_image(output_path, char, i, train_amount, noiser)
+    create_val_image(output_path, char, i, val_amount, noiser)
+    create_test_image(output_path, char, i, test_amount, noiser)
 
 
-def create_test_image(output_path, char, i, font, amount, noiser):
+def create_test_image(output_path, char, i, amount, noiser):
     for j in range(amount):
+        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
         draw_word_and_save_file(char, font, output_path, "test", i, j, noiser)
 
 
-def create_val_image(output_path, char, i, font, amount, noiser):
+def create_val_image(output_path, char, i,  amount, noiser):
     for j in range(amount):
+        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
         draw_word_and_save_file(char, font, output_path, "val", i, j, noiser)
 
 
-def create_train_image(output_path, char, i, font, amount, noiser):
+def create_train_image(output_path, char, i,  amount, noiser):
     for j in range(amount):
+        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
         draw_word_and_save_file(char, font, output_path, "train", i, j, noiser)
 
 
 def draw_word_and_save_file(char, font, output_path, cat, char_class, image_number, noiser):
-    bg = np.full((224, 244), 255)
+    bg = np.full((224, 224), 200 + random.randint(-20, 20))
     bg_height = bg.shape[0]
     bg_width = bg.shape[1]
 
@@ -76,7 +78,7 @@ def draw_word_and_save_file(char, font, output_path, cat, char_class, image_numb
     fname = os.path.join(folder_name, cat + '_' + str(image_number) + '.jpg')
 
     # add noise
-    noiser.apply(word_img)
+    word_img = noiser.apply(word_img)
 
     cv2.imwrite(fname, word_img)
 
@@ -166,11 +168,11 @@ if __name__ == '__main__':
                         help='Path to the alphabet')
     parser.add_argument('--output_path', required=True, type=str,
                         help='Path to the output folder')
-    parser.add_argument('--train_amount', type=int, default=10,
+    parser.add_argument('--train_amount', type=int, default=28,
                         help='The amount of train images')
-    parser.add_argument('--test_amount', type=int, default=2,
+    parser.add_argument('--test_amount', type=int, default=7,
                         help='The amount of test images')
-    parser.add_argument('--val_amount', type=int, default=2,
+    parser.add_argument('--val_amount', type=int, default=7,
                         help='The amount of val images')
 
     args = parser.parse_args()

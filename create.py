@@ -5,7 +5,6 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 import os
 from tqdm import tqdm
-import itertools
 
 
 def main(alphabet_path, output_path):
@@ -32,7 +31,7 @@ def create_test_image(output_path, char, i, font):
 
     # bottom middle
     text_x = int((bg_width - word_width) / 2)
-    text_y = bg_width - word_height
+    text_y = bg_width - word_height - 25
     draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y, "test")
 
 
@@ -93,7 +92,7 @@ def draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y, cat
 
 
 def create_alphabet(alphabet_path):
-    alphabet = ''
+    alphabet = ' '
     with open(alphabet_path, mode='r', encoding='utf-8') as f:
         for line in f.readlines():
             alphabet += line.strip()

@@ -21,8 +21,8 @@ def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
 
     pool = Pool(processes=cpu_count())
 
-    pool.starmap(generate_files, zip(alphabet[1],
-                                     range(len(alphabet[1])),
+    pool.starmap(generate_files, zip(alphabet,
+                                     range(len(alphabet)),
                                      itertools.repeat(output_path),
                                      itertools.repeat(test_amount),
                                      itertools.repeat(train_amount),

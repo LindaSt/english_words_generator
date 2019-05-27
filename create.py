@@ -1,41 +1,62 @@
 import argparse
+from multiprocessing import Pool, cpu_count
+
 import numpy as np
 import random
 from PIL import Image, ImageDraw, ImageFont
 import cv2
 import os
-from tqdm import tqdm
+import itertools
+
+from utils.noiser import Noiser
 
 
-def main(alphabet_path, output_path):
+def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
     alphabet = create_alphabet(alphabet_path)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    font = ImageFont.truetype('./data/font/msyh.ttc', 72)
+    noiser = Noiser(0.25, 0.25, 0.25, 0.25)
 
-    for i, char in tqdm(zip(range(len(alphabet)), alphabet), ncols=150):
-        create_train_image(output_path, char, i, font)
-        create_val_image(output_path, char, i, font)
-        create_test_image(output_path, char, i, font)
+    pool = Pool(processes=cpu_count())
 
+    pool.starmap(generate_files, zip(alphabet,
+                                     range(len(alphabet)),
+                                     itertools.repeat(output_path),
+                                     itertools.repeat(test_amount),
+                                     itertools.repeat(train_amount),
+                                     itertools.repeat(val_amount),
+                                     itertools.repeat(noiser)))
 
-def create_test_image(output_path, char, i, font):
-    bg = np.full((224, 244), 255)
-    bg_width = bg.shape[1]
-
-    word_size = get_word_size(font, char)
-    word_height = word_size[1]
-    word_width = word_size[0]
-
-    # bottom middle
-    text_x = int((bg_width - word_width) / 2)
-    text_y = bg_width - word_height - 25
-    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y, "test")
+    pool.close()
 
 
-def create_val_image(output_path, char, i, font):
+def generate_files(char, i, output_path, test_amount, train_amount, val_amount, noiser):
+    font = ImageFont.truetype('./data/font/msyh.ttc', 152)
+    print('create files for char {}'.format(i))
+
+    create_train_image(output_path, char, i, font, train_amount, noiser)
+    create_val_image(output_path, char, i, font, val_amount, noiser)
+    create_test_image(output_path, char, i, font, test_amount, noiser)
+
+
+def create_test_image(output_path, char, i, font, amount, noiser):
+    for j in range(amount):
+        draw_word_and_save_file(char, font, output_path, "test", i, j, noiser)
+
+
+def create_val_image(output_path, char, i, font, amount, noiser):
+    for j in range(amount):
+        draw_word_and_save_file(char, font, output_path, "val", i, j, noiser)
+
+
+def create_train_image(output_path, char, i, font, amount, noiser):
+    for j in range(amount):
+        draw_word_and_save_file(char, font, output_path, "train", i, j, noiser)
+
+
+def draw_word_and_save_file(char, font, output_path, cat, char_class, image_number, noiser):
     bg = np.full((224, 244), 255)
     bg_height = bg.shape[0]
     bg_width = bg.shape[1]
@@ -44,50 +65,19 @@ def create_val_image(output_path, char, i, font):
     word_height = word_size[1]
     word_width = word_size[0]
 
-    # right middle
+    # bottom middle
+    text_x = int((bg_width - word_width) / 2) + random.randint(-10, 10)
+    text_y = int((bg_height - word_height) / 2) + random.randint(-10, 10)
 
-    text_x = bg_width - word_width
-    text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg, char, font, i, output_path, text_x, text_y, "val")
-
-
-def create_train_image(output_path, char, i, font):
-    # middle, top middle, left middle
-    bg1 = np.full((224, 244), 255)
-
-    bg_height = bg1.shape[0]
-    bg_width = bg1.shape[1]
-
-    word_size = get_word_size(font, char)
-    word_height = word_size[1]
-    word_width = word_size[0]
-
-    # middle offset
-    text_x = int((bg_width - word_width) / 2)
-    text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg1, char, font, i, output_path, text_x, text_y, "train")
-
-    # left offset
-    bg2 = np.full((224, 244), 255)
-
-    text_x = 10
-    text_y = int((bg_height - word_height) / 2)
-    draw_word_and_save_file(bg2, char, font, i, output_path, text_x, text_y, "train")
-
-    # top offset
-    bg3 = np.full((224, 244), 255)
-
-    text_x = int((bg_width - word_width) / 2)
-    text_y = 10
-    draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y, "train")
-
-
-def draw_word_and_save_file(bg3, char, font, i, output_path, text_x, text_y, cat):
-    word_img, _, _ = draw_text_on_bg(char, font, bg3, text_x, text_y)
-    folder_name = os.path.join(output_path, cat, str(i))
+    word_img, _, _ = draw_text_on_bg(char, font, bg, text_x, text_y)
+    folder_name = os.path.join(output_path, cat, str(char_class))
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
-    fname = os.path.join(folder_name, cat + '_' + str(i) + '.jpg')
+    fname = os.path.join(folder_name, cat + '_' + str(image_number) + '.jpg')
+
+    # add noise
+    noiser.apply(word_img)
+
     cv2.imwrite(fname, word_img)
 
 
@@ -167,9 +157,6 @@ def get_word_color(bg, text_x, text_y, word_height, word_width):
 
 
 def draw_text_wrapper(draw, text, x, y, font, text_color):
-    """
-    :param x/y: 应该是移除了 offset 的
-    """
     draw.text((x, y), text, fill=text_color, font=font)
 
 
@@ -179,7 +166,14 @@ if __name__ == '__main__':
                         help='Path to the alphabet')
     parser.add_argument('--output_path', required=True, type=str,
                         help='Path to the output folder')
+    parser.add_argument('--train_amount', type=int, default=10,
+                        help='The amount of train images')
+    parser.add_argument('--test_amount', type=int, default=2,
+                        help='The amount of test images')
+    parser.add_argument('--val_amount', type=int, default=2,
+                        help='The amount of val images')
 
     args = parser.parse_args()
 
-    main(args.alphabet_path, args.output_path)
+    main(args.alphabet_path, args.output_path, args.train_amount, args.test_amount, args.val_amount)
+    print("Fishished!")

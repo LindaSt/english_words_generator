@@ -21,8 +21,8 @@ def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
 
     pool = Pool(processes=cpu_count())
 
-    pool.starmap(generate_files, zip(alphabet,
-                                     range(len(alphabet)),
+    pool.starmap(generate_files, zip(alphabet[1],
+                                     range(len(alphabet[1])),
                                      itertools.repeat(output_path),
                                      itertools.repeat(test_amount),
                                      itertools.repeat(train_amount),
@@ -109,13 +109,16 @@ def draw_text_on_bg(word, font, bg, x, y):
     offset = font.getoffset(word)
 
     pil_img = Image.fromarray(np.uint8(bg))
+    color = bg[0, 0]
     draw = ImageDraw.Draw(pil_img)
 
     word_color = get_word_color(bg, x, y, word_height, word_width)
 
     draw_text_wrapper(draw, word, x - offset[0], y - offset[1], font, word_color)
 
-    np_img = np.array(pil_img).astype(np.float32)
+    rotated = pil_img.rotate(random.randint(-5, 5), expand=1)
+    np_img = np.array(rotated).astype(np.float32)
+    np_img[np.where(np_img == 0)] = color
 
     text_box_pnts = [
         [x, y],

@@ -1,0 +1,9 @@
+name: word_images_generator
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - numpy
+  - pillow
+  - scikit-image
+prefix: /Users/linda/miniconda2/envs/word_images_generator

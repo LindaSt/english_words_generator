@@ -1,19 +1,20 @@
 # word_image_generator
 
-You can generate binary images from a provided word list in any font provided.
+You can generate binary images from a provided word list in any font provided. 
+The images are randomly generated form a randomly sampled font, with randomized font size, position, rotation and shearing.
 
 ### Requirements
 - conda
 
 ### Installation
-there is an environment file for OSX(18 Mojave) and linux. Just use the one suitable for you system with the following command to create the environmnet: 
-```conda env create -f environemnt_*.yml```
+There is an environment file, use the following command to create the environmnet: 
+```conda env create -f environemnt.yml```
 
-This creates  conda environment "chinese_mnist"
+This creates  conda environment "words_generator"
 
 ### Usage
 Activate your environment:
-```conda activate chinese_mnist```
+```conda activate words_generator```
 and execute the following command:
 ```python generate.py --words_path /path/to/your/words/file --font_folder /path/to/your/fonts/folder --output_path /path/to/your/output/folder```
 

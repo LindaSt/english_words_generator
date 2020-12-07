@@ -4,130 +4,119 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 import random
 from PIL import Image, ImageDraw, ImageFont
-import cv2
 import os
 import itertools
+import glob
 
-from utils.noiser import Noiser
+from utils.transforms import shear_y, shear_x
 
 
-def main(alphabet_path, output_path, train_amount, test_amount, val_amount):
-    alphabet = create_alphabet(alphabet_path)
+def main(words_path, fonts_folder, output_path, train_amount, test_amount, val_amount):
+    word_list = create_word_list(words_path)
+
+    font_list = glob.glob(os.path.join(fonts_folder, '*.ttf'))
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    noiser = Noiser(0.25, 0.25, 0.25, 0.25)
-
     pool = Pool(processes=cpu_count())
 
-    pool.starmap(generate_files, zip(alphabet,
-                                     range(len(alphabet)),
+    pool.starmap(generate_files, zip(word_list,
+                                     range(len(word_list)),
+                                     itertools.repeat(font_list),
                                      itertools.repeat(output_path),
                                      itertools.repeat(test_amount),
                                      itertools.repeat(train_amount),
-                                     itertools.repeat(val_amount),
-                                     itertools.repeat(noiser)))
+                                     itertools.repeat(val_amount)))
 
     pool.close()
 
 
-def generate_files(char, i, output_path, test_amount, train_amount, val_amount, noiser):
+def generate_files(word, i, font_list, output_path, test_amount, train_amount, val_amount):
     print('create files for char {}'.format(i))
 
-    create_train_image(output_path, char, i, train_amount, noiser)
-    create_val_image(output_path, char, i, val_amount, noiser)
-    create_test_image(output_path, char, i, test_amount, noiser)
+    create_image('train', output_path, word, i, font_list, train_amount)
+    create_image('val', output_path, word, i, font_list, val_amount)
+    create_image('test', output_path, word, i, font_list, test_amount)
 
 
-def create_test_image(output_path, char, i, amount, noiser):
+def create_image(subset, output_path, char, i, font_list, amount):
     for j in range(amount):
-        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
-        draw_word_and_save_file(char, font, output_path, "test", i, j, noiser)
+        font = ImageFont.truetype(sample_font(font_list), 140 + random.randint(-40, 40))
+        draw_word_and_save_file(char, font, output_path, subset, i, j)
 
 
-def create_val_image(output_path, char, i,  amount, noiser):
-    for j in range(amount):
-        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
-        draw_word_and_save_file(char, font, output_path, "val", i, j, noiser)
+def sample_font(font_list):
+    return np.random.choice(font_list, 1)[0]
 
 
-def create_train_image(output_path, char, i,  amount, noiser):
-    for j in range(amount):
-        font = ImageFont.truetype('./data/font/msyh.ttc', 150 + random.randint(-30, 30))
-        draw_word_and_save_file(char, font, output_path, "train", i, j, noiser)
-
-
-def draw_word_and_save_file(char, font, output_path, cat, char_class, image_number, noiser):
-    bg = np.full((224, 224), 200 + random.randint(-20, 20))
-    bg_height = bg.shape[0]
-    bg_width = bg.shape[1]
-
+def draw_word_and_save_file(char, font, output_path, cat, char_class, image_number=None):
     word_size = get_word_size(font, char)
     word_height = word_size[1]
     word_width = word_size[0]
 
-    # bottom middle
-    text_x = int((bg_width - word_width) / 2) + random.randint(-10, 10)
-    text_y = int((bg_height - word_height) / 2) + random.randint(-10, 10)
+    bg_height = int(word_height*2.5)
+    bg_width = int(word_width*2)
+    bg = Image.new('L', (bg_width, bg_height), color=255)
 
-    word_img, _, _ = draw_text_on_bg(char, font, bg, text_x, text_y)
+    # bottom middle
+    # TODO fix this to make it a bit more centred
+    text_x = int((bg_width - word_width) / 2) + random.randint(-int(bg_width*0.1), int(bg_height*0.05))
+    text_y = int((bg_height - word_height) / 2) + random.randint(-int(bg_height*0.05), int(bg_height*0.05))
+
+    # draw the word on the image
+    word_img = draw_text_on_bg(char, font, bg, text_x, text_y)
+
+    # save the image
     folder_name = os.path.join(output_path, cat, str(char_class))
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
-    fname = os.path.join(folder_name, cat + '_' + str(image_number) + '.jpg')
-
-    # add noise
-    word_img = noiser.apply(word_img)
-
-    cv2.imwrite(fname, word_img)
+    fname = os.path.join(folder_name, cat + '_' + str(image_number) + '.png')
+    word_img.save(fname)
 
 
-def create_alphabet(alphabet_path):
-    alphabet = ' '
-    with open(alphabet_path, mode='r', encoding='utf-8') as f:
-        for line in f.readlines():
-            alphabet += line.strip()
-    return alphabet
+def create_word_list(words_path):
+    my_file = open(words_path, "r")
+    content_list = my_file.readlines()
+    return [w.strip() for w in content_list]
 
 
-def draw_text_on_bg(word, font, bg, x, y):
+def draw_text_on_bg(word, font, pil_img, x, y):
     """
     Draw word in the center of background
     :param word: word to draw
     :param font: font to draw word
-    :param bg: background numpy image
+    :param pil_img: background PIL image
     :return:
-        np_img: word image
-        text_box_pnts: left-top, right-top, right-bottom, left-bottom
+        pil_img: word image
     """
-
-    word_size = get_word_size(font, word)
-    word_height = word_size[1]
-    word_width = word_size[0]
-
     offset = font.getoffset(word)
 
-    pil_img = Image.fromarray(np.uint8(bg))
-    color = bg[0, 0]
     draw = ImageDraw.Draw(pil_img)
 
-    word_color = get_word_color(bg, x, y, word_height, word_width)
+    word_color = 0
 
     draw_text_wrapper(draw, word, x - offset[0], y - offset[1], font, word_color)
 
-    rotated = pil_img.rotate(random.randint(-5, 5), expand=1)
-    np_img = np.array(rotated).astype(np.float32)
-    np_img[np.where(np_img == 0)] = color
+    # add rotation
+    #rot = random.randint(-2, 2)
+    #pil_img = pil_img.rotate(rot, expand=1, fillcolor=255)
+    # add shearing
+    pil_img = shear_x(pil_img, 0.08)
+    pil_img = shear_y(pil_img, 0.08)
 
-    text_box_pnts = [
-        [x, y],
-        [x + word_width, y],
-        [x + word_width, y + word_height],
-        [x, y + word_height]
-    ]
+    # np_img = np.array(rotated).astype(np.float32)
+    # word_size = get_word_size(font, word)
+    # word_height = word_size[1]
+    # word_width = word_size[0]
+    # text_box_pnts = [
+    #     [x, y],
+    #     [x + word_width, y],
+    #     [x + word_width, y + word_height],
+    #     [x, y + word_height]
+    # ]
 
-    return np_img, text_box_pnts, word_color
+    return pil_img
 
 
 def get_word_size(font, word):
@@ -144,41 +133,26 @@ def get_word_size(font, word):
     return size
 
 
-def get_word_color(bg, text_x, text_y, word_height, word_width):
-    """
-    Only use word roi area to get word color
-    """
-    offset = 10
-    ymin = text_y - offset
-    ymax = text_y + word_height + offset
-    xmin = text_x - offset
-    xmax = text_x + word_width + offset
-
-    word_roi_bg = bg[ymin: ymax, xmin: xmax]
-
-    bg_mean = int(np.mean(word_roi_bg) * (2 / 3))
-    word_color = random.randint(0, bg_mean)
-    return word_color
-
-
 def draw_text_wrapper(draw, text, x, y, font, text_color):
     draw.text((x, y), text, fill=text_color, font=font)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--alphabet_path', required=True, type=str,
-                        help='Path to the alphabet')
+    parser.add_argument('--words_path', required=True, type=str,
+                        help='Path to the word list text file')
+    parser.add_argument('--fonts_folder', required=True, type=str,
+                        help='Path to the font folder')
     parser.add_argument('--output_path', required=True, type=str,
                         help='Path to the output folder')
-    parser.add_argument('--train_amount', type=int, default=28,
-                        help='The amount of train images')
-    parser.add_argument('--test_amount', type=int, default=7,
-                        help='The amount of test images')
-    parser.add_argument('--val_amount', type=int, default=7,
-                        help='The amount of val images')
+    parser.add_argument('--train_amount', type=int, default=10,
+                        help='The amount of train images for each word')
+    parser.add_argument('--test_amount', type=int, default=1,
+                        help='The amount of test images for each word')
+    parser.add_argument('--val_amount', type=int, default=1,
+                        help='The amount of val images for each word')
 
     args = parser.parse_args()
 
-    main(args.alphabet_path, args.output_path, args.train_amount, args.test_amount, args.val_amount)
+    main(args.words_path, args.fonts_folder, args.output_path, args.train_amount, args.test_amount, args.val_amount)
     print("Fishished!")

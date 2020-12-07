@@ -1,6 +1,6 @@
-# chinese_mnis_generator
+# word_image_generator
 
-You can generate your own mnist like chinese character dataset.
+You can generate binary images from a provided word list in any font provided.
 
 ### Requirements
 - conda
@@ -15,12 +15,12 @@ This creates  conda environment "chinese_mnist"
 Activate your environment:
 ```conda activate chinese_mnist```
 and execute the following command:
-```python generate.py --alphabet_path /path/to/your/alphabet/file --output_path /path/to/your/output/folder```
+```python generate.py --words_path /path/to/your/words/file --font_folder /path/to/your/fonts/folder --output_path /path/to/your/output/folder```
 
 ### Optionals
 ```
-usage: generate.py [-h] --alphabet_path ALPHABET_PATH --output_path
+usage: generate.py [-h] --alphabet_words WORDS_PATH --font_folder FONT_FOLDER --output_path
                    OUTPUT_PATH [--train_amount TRAIN_AMOUNT]
                    [--test_amount TEST_AMOUNT] [--val_amount VAL_AMOUNT]
-generate.py: error: the following arguments are required: --alphabet_path, --output_path
+generate.py: error: the following arguments are required: --words_path, --font_path, --output_path
 ```
